@@ -1,0 +1,11 @@
+easy
+    alfahír - http://alfahir.hu/rss.xml
+    magyaridok = http://magyaridok.hu/feed/?
+    24.hu = http://24.hu/feed/
+    blikk : http://www.blikk.hu/static/rss_hirek.xml
+    444 = http://444.hu/feed
+    index = http://index.hu/24ora/rss/
+
+different:
+        kuruc : http://feeds2.feedburner.com/Kurucinfo
+         hvg    :http://hvg.hu/egyeb/rss
