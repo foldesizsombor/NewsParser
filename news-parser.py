@@ -1,3 +1,4 @@
+import bs4 as bs4
 import requests
 import bs4 as bs
 import re
@@ -21,7 +22,12 @@ class Parser:
         pool = Pool(processes=len(links))
         words = pool.map(self.getWordsFromTags,links)
         pool.close()
-        return words
+        joined = []
+        for word in words:
+            joined += word
+        return joined
+
+
 
     def getWordsFromTags(self, parameter):
         link = parameter[0]
@@ -42,7 +48,7 @@ class Parser:
 class Helpers:
 
     @staticmethod
-    def indexCounter( data):
+    def indexCounter(data):
         count = Counter(data)
         return count.most_common(3)
 
@@ -65,9 +71,11 @@ class Helpers:
 if __name__ == "__main__":
     parser = Parser()
     #pickle.dump(,open("articles.pk","wb"))
-    print(parser.processRssFeed("http://888.hu/rss/", "guid", "div", {"id": "st"}))
+    words = parser.processRssFeed("http://www.origo.hu/contentpartner/rss/itthon/origo.xml", "guid", "div",
+                                  {"id": "article-center"})  # st
+    print(words)
     #words = pickle.load(open("articles.pk","rb"))
-    #print(Helpers.keyWordCounter(words,["migráns", "soros"]))
+    print(Helpers.keyWordCounter(words, ["soros", "busz", "trump", "olimpia"]))
 
 """
 def index_parser():
