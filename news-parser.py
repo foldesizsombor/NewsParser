@@ -1,19 +1,25 @@
-import bs4 as bs4
 import requests
 import bs4 as bs
 import re
 import pickle
 from collections import Counter
 from multiprocessing import Pool
-class Parser:
-    black_list = ["a", "csak", "ezért", "tehát", "ennélfogva", "tudniillik", "amennyiben", "hanem", "pedig", "mégis", "mégse", "nemcsak", "azonban", "ellenben",  "az", "és", "viszont", "hogy", "888", "meg,", "sőt", "sem", "se",  "hu", "http", "de", "egy",]
-    # TODO: replace with data source
+import sqlite3
 
+class Modell:
+    def __init__(self):
+        self.conn = sqlite3.connect('database.db')
+        self.c = self.conn.cursor()
+
+    def getBlackList(self):
+        black_list = [i for i in self.c.execute('SELECT * FROM black_list')]
+        return black_list
+
+class Parser:
     def getSoupObject(self, url, mode="lxml"):
         res = requests.get(url)
         html = res.content
         soup = bs.BeautifulSoup(html, mode)
-
         return soup
 
     def processRssFeed(self, url, articleTag, tag, style):
@@ -27,26 +33,26 @@ class Parser:
             joined += word
         return joined
 
-
-
     def getWordsFromTags(self, parameter):
         link = parameter[0]
         tag = parameter[1]
         style = parameter[2]
         soupObject = self.getSoupObject(link)
         words = []
+        modell = Modell()
+        dataBase = modell.getBlackList()
         for i in soupObject.find_all(tag, style):
             # TODO: review for loop (join find_all array)
             myText = i.text
             word = re.findall(r'\w+', myText)
             for x in word:
                 d = x.lower()
-                if d not in self.black_list:
+                if d not in dataBase:
                     words.append(d.strip())
         return words
 
-class Helpers:
 
+class Helpers:
     @staticmethod
     def indexCounter(data):
         count = Counter(data)
@@ -68,14 +74,24 @@ class Helpers:
                         counter[keyword] += 1
         return counter
 
+
+
 if __name__ == "__main__":
     parser = Parser()
     #pickle.dump(,open("articles.pk","wb"))
-    words = parser.processRssFeed("http://www.origo.hu/contentpartner/rss/itthon/origo.xml", "guid", "div",
-                                  {"id": "article-center"})  # st
-    print(words)
+    words = parser.processRssFeed("http://www.origo.hu/contentpartner/rss/itthon/origo.xml", "guid", "div", {"id": "article-center"})  # st
+    #print(words)
     #words = pickle.load(open("articles.pk","rb"))
-    print(Helpers.keyWordCounter(words, ["soros", "busz", "trump", "olimpia"]))
+
+    #words = parser.processRssFeed("http://index.hu/24ora/rss/","guid","p",{"id": "article-center"})
+
+    print(Helpers.keyWordCounter(words, ["soros", "ronaldo", "trump", "olimpia"]))
+
+
+
+
+
+
 
 """
 def index_parser():
