@@ -4,11 +4,11 @@ import re
 import pickle
 from collections import Counter
 from multiprocessing import Pool
-from Modells import Modell
+from Modells import Model
 
 class Parser:
     def __init__(self):
-        self.db = Modell()
+        self.db = Model()
         self.black_list = self.db.getBlackList()
 
     def getSoupObject(self, url, mode="lxml"):
@@ -19,16 +19,10 @@ class Parser:
 
         return soup
 
-    def processRssFeed(self, url, articleTag, tag, style):
+    def processRssFeed(self, url, tag):
         soup = self.getSoupObject(url)
-        links = [[link.text, tag, style] for link in soup.find_all(articleTag)]
-        pool = Pool(processes=len(links))
-        words = pool.map(self.getWordsFromTags, links)
-        pool.close()
-        joined = []
-        for word in words:
-            joined += word
-        return joined
+        for i in soup.find_all(tag):
+            print("('" + i.text + "',),")
 
     def getWordsFromTags(self, parameter):
         link = parameter[0]
@@ -75,14 +69,14 @@ class Helpers:
 if __name__ == "__main__":
     parser = Parser()
     # pickle.dump(,open("articles.pk","wb"))
-    words = parser.processRssFeed("http://www.origo.hu/contentpartner/rss/itthon/origo.xml", "guid", "div",
-                                  {"id": "article-text"})  # st
+    words = parser.processRssFeed("https://hu.wiktionary.org/wiki/Kateg%C3%B3ria:magyar_k%C3%B6t%C5%91sz%C3%B3k",
+                                  "a")  # st
 
     # words = pickle.load(open("articles.pk","rb"))
     print(words)
     # words = parser.processRssFeed("http://index.hu/24ora/rss/","guid","p",{"id": "article-center"})
 
-    print(Helpers.keyWordCounter(words, ["soros", "ronaldo", "trump", "olimpia"]))
+    # print(Helpers.keyWordCounter(words, ["soros", "ronaldo", "trump", "olimpia"]))
 
 """
 def index_parser():
