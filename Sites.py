@@ -2,7 +2,7 @@ import requests
 import bs4 as bs
 import re
 from multiprocessing import Pool, cpu_count
-from Modells import Model
+from Tables import TableModel
 
 
 class GenericSite:
@@ -25,7 +25,7 @@ class GenericSite:
         del self.db
 
     def initSite(self):
-        self.db = Model()
+        self.db = TableModel()
         self.blackList = self.db.getBlackList()
         self.urls = self.db.getFeedCategores(self.siteId)
 
@@ -38,21 +38,25 @@ class GenericSite:
         return soup
 
     def processRssFeed(self):
-        joined = []
         max_process_count = cpu_count()
         for url in self.urls:
             soup = self.getSoupObject(url)
             links = [[link.text, self.articleContainerTag, self.parseStyle] for link in soup.find_all(self.rssTag)]
             for current_links in range(0, len(links), max_process_count):
+                links_to_process = links[current_links:current_links + max_process_count]
+                links_to_process = [[parameter[0], parameter[1], parameter[2], i] for i, parameter in
+                                    enumerate(links_to_process)]
+
                 article_ids = []
-                for link in links[current_links:current_links + max_process_count]:
+                for link in links_to_process:
                     article_ids.append(self.db.saveArticle(link[0], 0, self.siteId))
 
                 pool = Pool(processes=max_process_count)
-                words = pool.map(self.getWordsFromTags, links[current_links:current_links + max_process_count])
+                words = pool.map(self.getWordsFromTags, links_to_process)
                 pool.close()
-                for i, word in enumerate(words):
-                    self.db.saveWords(word, article_ids[i])
+                for word in words:
+                    # print(word,print(article_ids[word[0]]))
+                    self.db.saveWords(word[1:], article_ids[word[0]])
 
         self.db.commitAllChanges()
 
@@ -60,9 +64,8 @@ class GenericSite:
         link = parameter[0]
         tag = parameter[1]
         style = parameter[2]
-        # todo: try self
         soupObject = self.getSoupObject(link)
-        words = []
+        words = [parameter[3]]
         for i in soupObject.find_all(tag, style):
             myText = i.text
             word = re.findall(r'\w+', myText)
@@ -70,6 +73,7 @@ class GenericSite:
                 d = x.lower()
                 if d not in self.blackList:
                     words.append(d.strip())
+
         return words
 
 

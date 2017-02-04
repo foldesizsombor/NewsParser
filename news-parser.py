@@ -4,11 +4,11 @@ import re
 import pickle
 from collections import Counter
 from multiprocessing import Pool
-from Modells import Model
+from Tables import TableModel
 
 class Parser:
     def __init__(self):
-        self.db = Model()
+        self.db = TableModel()
         self.black_list = self.db.getBlackList()
 
     def getSoupObject(self, url, mode="lxml"):

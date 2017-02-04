@@ -2,6 +2,7 @@ import sqlite3
 import time
 
 
+# TODO: make an initDatabase
 class Model:
     def __init__(self):
         self.conn = sqlite3.connect('database.db')
@@ -30,7 +31,7 @@ class Model:
             time_stamp = int(time.time())
             self.c.execute('INSERT INTO articles VALUES (?,?,?,?,?)',
                            (max_id, siteId, time_stamp, categoryId, url))
-            return max_id + 1
+            return max_id
         return articleId[0]
 
     def saveWords(self, words, articelId):
