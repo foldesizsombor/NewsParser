@@ -70,7 +70,7 @@ class TableModel:
         if limit:
             query += " LIMIT " + str(limit)
         query += ";"
-        print(query)
+        # print(query)
         isSucessfull = Database.execute_query(query, param_values)
         return isSucessfull
 
@@ -88,7 +88,7 @@ class TableModel:
             keys.append(i)
         keys = "(" + ", ".join(keys) + ")"
         query = "INSERT INTO " + self.tableName + keys + " VALUES( " + ", ".join(values) + " );"
-        print(query)
+        # print(query)
         is_sucessfull = Database.execute_query(query)
         if save:
             Database.saveChanges()

@@ -1,11 +1,11 @@
 easy
     alfahír - http://alfahir.hu/rss.xml
-    magyaridok = http://magyaridok.hu/feed/?
+    magyaridok = http://magyaridok.hu/feed/?    pipa
     24.hu = http://24.hu/feed/
     blikk : http://www.blikk.hu/static/rss_hirek.xml
-    444 = http://444.hu/feed
-    index = http://index.hu/24ora/rss/
-
+    444 = http://444.hu/feed                    pipa
+    index = http://index.hu/24ora/rss/          pipa
+    origo                                       pipa
 different:
         kuruc : http://feeds2.feedburner.com/Kurucinfo
-         hvg    :http://hvg.hu/egyeb/rss
+         hvg    :http://hvg.hu/egyeb/rss        pipa
