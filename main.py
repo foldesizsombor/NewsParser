@@ -1,7 +1,15 @@
 from Tables.CategoryTable import CategoryTable
 from Tables.ArticleTable import ArticleTable
+from Tables.WordTable import WordTable
 from WebsiteParsers.WebsiteParser import WebsiteParser
 
-if __name__ == "__main__":
+
+def magyarIdokTest():
     parser = WebsiteParser()
-    print(parser.processRssFeed())
+    parser.processRssFeed()
+
+
+if __name__ == "__main__":
+    # parser = WebsiteParser()
+    # print(parser.processRssFeed())
+    magyarIdokTest()

@@ -21,7 +21,7 @@ class Database:
         """
         if not cls.connection and is_new == False:
             cls.connection = sqlite3.connect("C:/Users/farka/PycharmProjects/Nyugat_website/NewsParser/Db/database.db",
-                                             timeout=10)
+                                             timeout=5)
         return cls.connection
 
     @classmethod
@@ -42,11 +42,11 @@ class Database:
         if cursor:
             if not query_parameters:
                 query_parameters = ()
-            response = cursor.execute(query, query_parameters)
             try:
+                response = cursor.execute(query, query_parameters)
                 data = response.fetchall()
-            except AttributeError:
-                data = None
+            except Exception as exception:
+                print("WARNING:", exception)
         return data
 
     @classmethod

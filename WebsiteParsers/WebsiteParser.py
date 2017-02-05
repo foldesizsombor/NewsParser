@@ -9,6 +9,7 @@ from Tables.BlackListTable import BlackListTable
 from Tables.ArticleTable import ArticleTable
 from Tables.WordTable import WordTable
 from Tables.CategoryTable import CategoryTable
+from Tables.SupportedSitesTable import SupportedSitesTable
 
 
 class WebsiteParser:
@@ -20,40 +21,44 @@ class WebsiteParser:
 
     Attributes:
         :var categoryUrls (list)
-            some of the websites has categories to structure their content,
-            so a the parser might have to parse trough more than one url.
-            the parser uses the urls list to store these urls
+            Some of the websites has categories to structure their content,
+                so a the parser might have to parse trough more than one url.
+            The parser uses the urls list to store these urls
+        :var parseStyle (dict)
+            The parser uses tags, and css styles(eg.:id,class) to parse the content of the site.
+            It uses this dictionary to store these parameters
+        :var siteId (int)
+            Every website is represented by an id in the database. To be able to get website specific data from
+                the db, the object has to store it's id.
+        :var rssTag ()
 
     """
-    # parseStyle = {}
-
-    # siteId = None
-    # rssTag = None
-    # articleContainerTag = None
 
     categoryUrls = []
-    parseStyle = {"id": "article-text"}
-    siteId = 0
-    rssTag = "guid"
-    articleContainerTag = "div"
+    parseStyle = {}
+    siteId = 3
+    rssTag = ""
+    articleContainerTag = ""
+    excludedTags = ["script", "footer"]
 
     def __init__(self):
-        self.initSite()
+        self.initParser()
 
     def __del__(self):
-        self.destructSite()
+        self.destructParser()
 
-    def destructSite(self):
+    def destructParser(self):
         del self.blackListTable
         del self.articleTable
         del self.wordTable
         del self.categoryTable
 
-    def initSite(self):
+    def initParser(self):
         self.blackListTable = BlackListTable()
         self.articleTable = ArticleTable()
         self.wordTable = WordTable()
         self.categoryTable = CategoryTable()
+        self.sitesTable = SupportedSitesTable()
 
         categories = self.categoryTable.getAll({"site_id": self.siteId})
         self.categoryIds = [category[0] for category in categories]
@@ -62,7 +67,24 @@ class WebsiteParser:
         blackList = self.blackListTable.getAll()
         self.blackList = [blackword[0] for blackword in blackList]
 
-    def _getSoupObject(self, url, mode="lxml", tags_to_extract=None):
+        site = self.sitesTable.getOne({"id": self.siteId})[0]
+        if site[2] != "0":
+            self.parseStyle["id"] = site[2]
+        elif site[3] != "0":
+            self.parseStyle["class"] = site[3]
+
+        self.articleContainerTag = site[4]
+        self.rssTag = site[5]
+
+    def _getSoupObject(self, url, mode="lxml"):
+        """
+        makes a beautiful soup object out of a url.
+        this method only supposed to use internally
+        :param url:
+        :param mode:
+        :return:
+        """
+        tags_to_extract = self.excludedTags
         res = requests.get(url)
         html = res.content
         soup = bs.BeautifulSoup(html, mode)
@@ -81,18 +103,18 @@ class WebsiteParser:
         # loops through the category urls
         for i, url in enumerate(self.categoryUrls):
             soup = self._getSoupObject(url)
-
             # creates a list witch contains lists of a link's url,
             # and the tag and the style of the section we want to get
-            links = [[link.text, self.articleContainerTag, self.parseStyle] for link in soup.find_all(self.rssTag)]
-
+            links = [[link.text.split("#")[0], self.articleContainerTag, self.parseStyle] for link in
+                     soup.find_all(self.rssTag)]
+            print(links)
             # loops trough the links. It's using the amount of the cpu cores to decide the step size if the loop.
             # so for example if the computer has 8 cores it steps by 8.
             # this is necessary because the multiprocessing module is only stable if it has less processes than the cpu
             # cores.
             for current_links in range(0, len(links), max_process_count):
 
-                # selects the links to pass to the multiprocessing function.
+                # Selects the links to pass to the multiprocessing function.
                 # It's slicing the links list by the amount of the cpu cores.
                 links_to_process = links[current_links:current_links + max_process_count]
                 # Adds an index to each link to be able to sort them once the multiprocessing functions finished
@@ -102,6 +124,7 @@ class WebsiteParser:
                 # Adds an new row to the articles table for each link, and saves it
                 article_ids = []
                 for link in links_to_process:
+                    # Adds a new row to the articleTable
                     self.articleTable.addDataToTable(
                         {"url": link[0],
                          "datetime": time_stamp,
@@ -109,6 +132,7 @@ class WebsiteParser:
                          "siteId": self.siteId
                          },
                         False)
+                    # Fetches the id of the new article
                     article_ids.append(
                         self.articleTable.getOne(
                             {"url": link[0],
@@ -138,10 +162,10 @@ class WebsiteParser:
 
     def _getWordsFromTags(self, parameter):
         """
-        This function parses trough a page on a website,
+        This method parses trough a page on a website,
         and collects the words inside a specific tag with a specific style.
-        This function is called by the multiprocessing module, and runs simultaneously on every core of the cpu
-
+        It is called by the multiprocessing module, and runs simultaneously on every core of the cpu
+        This method should only be used internally
         :param parameter: contains the url of the webpage, and the tag, and style of the parsed element
         :return:          a list of words that contains the words context(articleId) in the first element of the list
         """

@@ -61,8 +61,9 @@ class TableModel:
         if filters:
             parameter_names = filters.keys()
             param_values = [filters[i] for i in parameter_names]
-            parameters = "? = " + " AND ? = ".join(parameter_names)
+            parameters = " = ?  AND ".join(parameter_names) + " = ? "
             query = 'SELECT * FROM ' + self.getTableName() + " WHERE " + parameters
+
         else:
             param_values = None
             query = 'SELECT * FROM ' + self.tableName
@@ -76,7 +77,6 @@ class TableModel:
     def _insertIntoTable(self, data, save=True):
         """
         :param  dict data:
-        :param  dict filters:
         :return bool:
         """
         values = []
