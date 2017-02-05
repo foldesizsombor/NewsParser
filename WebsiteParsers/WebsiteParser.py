@@ -42,10 +42,21 @@ class WebsiteParser:
     excludedTags = ["script", "footer"]
 
     def __init__(self):
+        self.clearClassVariables()
         self.initParser()
 
     def __del__(self):
         self.destructParser()
+
+    def clearClassVariables(self):
+        """
+        Temporary solution, the child objects of the parser tend to inherit these variable's states idk why...
+        :return:
+        """
+        self.feedUrls = []
+        self.parseStyle = {}
+        self.rssTag = ""
+        self.articleContainerTag = ""
 
     def destructParser(self):
         del self.blackListTable
@@ -68,10 +79,14 @@ class WebsiteParser:
         self.blackList = [blackword[0] for blackword in blackList]
 
         site = self.sitesTable.getOne({"id": self.siteId})[0]
+
         if site[2] != "0":
             self.parseStyle["id"] = site[2]
         elif site[3] != "0":
             self.parseStyle["class"] = site[3]
+        # if self.siteId != 4 and self.siteId != 2:
+
+
         self.siteName = site[1]
         self.articleContainerTag = site[4]
 
@@ -199,5 +214,4 @@ class WebsiteParser:
                 if d not in self.blackList:
                     words.append(d.strip())
 
-        del soupObject
         return words
