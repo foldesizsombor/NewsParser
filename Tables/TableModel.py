@@ -9,8 +9,7 @@ class TableModel:
     tableName = ""  # Stores the name of the table in the database
 
     def __del__(self):
-        # Database.closeDb()
-        pass
+        Database.closeDb()
 
     def getTableName(self):
         return self.tableName
@@ -20,7 +19,10 @@ class TableModel:
         :param filters:
         :return:
         """
-        return self._getTableData(filters, 1)
+        try:
+            return self._getTableData(filters, 1)[0]
+        except IndexError:
+            return []
 
     def getMany(self, limit, filters=None):
         """
@@ -70,9 +72,11 @@ class TableModel:
         if limit:
             query += " LIMIT " + str(limit)
         query += ";"
-        # print(query)
-        isSucessfull = Database.execute_query(query, param_values)
-        return isSucessfull
+        query_output = Database.execute_query(query, param_values)
+        rows = self.getRowNames()
+        final_output = [{rows[index]: column[index] for index, row_name in enumerate(column)} for column in
+                        query_output]
+        return final_output
 
     def _insertIntoTable(self, data, save=True):
         """
@@ -82,7 +86,7 @@ class TableModel:
         values = []
         keys = []
         for i in data.keys():
-            if (type(data[i]) == str):
+            if type(data[i]) == str:
                 data[i] = "'" + data[i] + "'"
             values.append(str(data[i]))
             keys.append(i)
@@ -93,3 +97,10 @@ class TableModel:
         if save:
             Database.saveChanges()
         return is_sucessfull
+
+    @classmethod
+    def getRowNames(cls):
+        rowNames = []
+        for i in Database.execute_query("PRAGMA table_info(" + cls.tableName + ")"):
+            rowNames.append(i[1])
+        return rowNames

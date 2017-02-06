@@ -4,12 +4,17 @@ import re
 from multiprocessing import Pool, cpu_count
 import feedparser
 from time import mktime
-from datetime import datetime
 from Tables.BlackListTable import BlackListTable
 from Tables.ArticleTable import ArticleTable
 from Tables.WordTable import WordTable
 from Tables.CategoryTable import CategoryTable
 from Tables.SupportedSitesTable import SupportedSitesTable
+
+from Models.ArticleModel import ArticleModel
+from Models.BlackListModel import BlackListModel
+from Models.CategoryModel import CategoryModel
+from Models.SupportedSitesModel import SupportedSitesModel
+from Models.WordModel import WordModel
 
 
 class WebsiteParser:
@@ -35,28 +40,30 @@ class WebsiteParser:
     """
 
     feedUrls = []
-    parseStyle = {}
-    siteId = None
-    rssTag = ""
+    articleParseStyle = {}
+    tagParseStyle = {}
     articleContainerTag = ""
+    tagContainerTag = ""
     excludedTags = ["script", "footer"]
+    siteId = None
 
     def __init__(self):
-        self.clearClassVariables()
+        self.resetClassVariables()
         self.initParser()
 
     def __del__(self):
         self.destructParser()
 
-    def clearClassVariables(self):
+    def resetClassVariables(self):
         """
         Temporary solution, the child objects of the parser tend to inherit these variable's states idk why...
         :return:
         """
         self.feedUrls = []
-        self.parseStyle = {}
-        self.rssTag = ""
+        self.articleParseStyle = {}
         self.articleContainerTag = ""
+        self.tagParseStyle = {}
+        self.tagContainerTag = ""
 
     def destructParser(self):
         del self.blackListTable
@@ -72,25 +79,29 @@ class WebsiteParser:
         self.sitesTable = SupportedSitesTable()
 
         categories = self.categoryTable.getAll({"site_id": self.siteId})
-        self.categoryIds = [category[0] for category in categories]
-        self.feedUrls = [category[1] for category in categories]
+
+        self.categories = [category["id"] for category in categories]
+        self.feedUrls = [category["url"] for category in categories]
 
         blackList = self.blackListTable.getAll()
-        self.blackList = [blackword[0] for blackword in blackList]
+        self.blackList = [blackword["keys"] for blackword in blackList]
 
-        site = self.sitesTable.getOne({"id": self.siteId})[0]
+        siteData = self.sitesTable.getOne({"id": self.siteId})
+        siteModel = SupportedSitesModel(siteData)
+        if siteModel.getArticleContainerId() != "0":
+            self.articleParseStyle["id"] = siteModel.getArticleContainerId()
+        elif siteModel.getArticleContainerClass() != "0":
+            self.articleParseStyle["class"] = siteModel.getArticleContainerClass()
+        if siteModel.getTagContainerClass() != "0":
+            self.tagParseStyle["class"] = siteModel.getTagContainerClass()
+        elif siteModel.getTagContanerId() != "0":
+            self.tagParseStyle["id"] = siteModel.getTagContanerId()
 
-        if site[2] != "0":
-            self.parseStyle["id"] = site[2]
-        elif site[3] != "0":
-            self.parseStyle["class"] = site[3]
-        # if self.siteId != 4 and self.siteId != 2:
+        self.siteName = siteModel.getTitle()
+        self.articleContainerTag = siteModel.getArticleContainerTag()
+        self.tagContainerTag = siteModel.getTagContainerTag()
 
-
-        self.siteName = site[1]
-        self.articleContainerTag = site[4]
-
-    def getSoupObject(self, url, mode="lxml"):
+    def getSoupObject(self, url, enable_disabled_tags, mode="lxml"):
         """
         makes a beautiful soup object out of a url.
         this method only supposed to use internally
@@ -98,11 +109,16 @@ class WebsiteParser:
         :param mode:
         :return:
         """
+
         tags_to_extract = self.excludedTags
+        for i, p in enumerate(tags_to_extract):
+            if p in enable_disabled_tags:
+                tags_to_extract.remove(p)
         res = requests.get(url)
         html = res.content
         soup = bs.BeautifulSoup(html, mode)
         if tags_to_extract:
+            # todo: review this
             for i in tags_to_extract:
                 [s.extract() for s in soup(tags_to_extract)]
         return soup
@@ -122,7 +138,8 @@ class WebsiteParser:
                         link["published"] = link["published"].split(".")[0]
                     link["published_parsed"] = feedparser._parse_date(link["published"] + " +0100")
                 if not self.articleTable.getOne({"datetime": mktime(link["published_parsed"])}):
-                    meta = [link["link"], self.articleContainerTag, self.parseStyle, mktime(link["published_parsed"])]
+                    meta = [link["link"], self.articleContainerTag, self.articleParseStyle,
+                            mktime(link["published_parsed"])]
                     urls.append(meta)
             if urls:
                 self.processUrls(urls, i)
@@ -144,18 +161,19 @@ class WebsiteParser:
             # It's slicing the links list by the amount of the cpu cores.
             links_to_process = urls[current_links:current_links + max_process_count]
             # Adds an index to each link to be able to sort them once the multiprocessing functions finished
-            links_to_process = [[parameter[0], parameter[1], parameter[2], i, parameter[3]] for i, parameter in
-                                enumerate(links_to_process)]
+            # Todo: review this
+            links_to_process = [
+                [parameter[0], parameter[1], parameter[2], i, parameter[3], self.tagContainerTag, self.tagParseStyle]
+                for i, parameter in enumerate(links_to_process)]
 
             # Adds an new row to the articles table for each link, and saves it
             article_ids = []
             for link in links_to_process:
                 # Adds a new row to the articleTable
-
                 self.articleTable.addDataToTable(
                     {"url": link[0],
                      "datetime": link[4],
-                     "category_id": self.categoryIds[categoryIndex],
+                     "category_id": self.categories[categoryIndex],
                      "siteId": self.siteId
                      },
                     False)
@@ -164,8 +182,8 @@ class WebsiteParser:
                     self.articleTable.getOne(
                         {"url": link[0],
                          "datetime": link[4],
-                         "category_id": self.categoryIds[categoryIndex]}
-                    )[0][0]
+                         "category_id": self.categories[categoryIndex]}
+                    )["id"]
                 )
 
             # Sets the pool size to the amount of the cpu cores
@@ -177,7 +195,7 @@ class WebsiteParser:
             for words in pool_output:
 
                 # The first data in the words list is used to detect the word's context(article)
-                print(len(words), self.siteName)
+                print(len(words), self.siteName, article_ids[words[0]])
                 for word in words[1:]:
                     # If it's the last word to save it saves the changes to the database
                     if words == pool_output[-1] and word == words[-1]:
@@ -202,16 +220,24 @@ class WebsiteParser:
         :return list:  A list of words that contains the words context(articleId) in the first element of the list
         """
         link = parameter[0]
-        tag = parameter[1]
-        style = parameter[2]
-        soupObject = self.getSoupObject(link)
+        article_tag = parameter[1]
+        article_style = parameter[2]
+        tag_tag = parameter[5]
+        tag_style = parameter[6]
+        soupObject = self.getSoupObject(link, ["footer"])
         words = [parameter[3]]
-        for i in soupObject.find_all(tag, style):
-            myText = i.text
+        for word in soupObject.find_all(article_tag, article_style):
+            myText = word.text
             word = re.findall(r'\w+', myText)
             for x in word:
                 d = x.lower()
                 if d not in self.blackList:
                     words.append(d.strip())
 
+        tag_object = soupObject.find(tag_tag, tag_style)
+        tags = []
+
+        if tag_object:
+            tags = [i.lower() for i in tag_object.text.split("\n")]
+            # print(tags,link)
         return words

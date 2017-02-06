@@ -9,20 +9,29 @@ from WebsiteParsers.HVGParser import HVGParser
 from WebsiteParsers.IndexParser import IndexParser
 from WebsiteParsers.OrigoParser import OrigoParser
 from WebsiteParsers.MagyarIdokParser import MagyarIdokParser
+from Models.ArticleModel import ArticleModel
 
 
 def populateDb():
     parsers = [
+        _444Parser(),
         HVGParser(),
         IndexParser(),
-        _444Parser(),
         OrigoParser(),
         MagyarIdokParser()
     ]
 
     for parser in parsers:
+        # print(parser.tagParseStyle, parser.tagContainerTag)
         parser.processRssFeed()
+
+
+def testModels():
+    data = ArticleTable().getOne()
+    articleModel = ArticleModel(data)
+    print(articleModel.getUrl())
 
 
 if __name__ == "__main__":
     populateDb()
+    # testModels()

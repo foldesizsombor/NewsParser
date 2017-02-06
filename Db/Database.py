@@ -19,7 +19,7 @@ class Database:
         :param is_new: if the variable is true the method makes a new connection
         :return:       returns a connection
         """
-        if not cls.connection and is_new == False:
+        if not cls.connection or is_new:
             cls.connection = sqlite3.connect("C:/Users/farka/PycharmProjects/Nyugat_website/NewsParser/Db/database.db",
                                              timeout=5)
         return cls.connection
